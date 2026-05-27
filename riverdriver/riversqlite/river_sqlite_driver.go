@@ -459,6 +459,10 @@ var jobGetAvailableAttemptedBySQL = strings.TrimSpace(`
 `)
 
 func (e *Executor) JobGetAvailable(ctx context.Context, params *riverdriver.JobGetAvailableParams) ([]*rivertype.JobRow, error) {
+	kinds, err := json.Marshal(params.Kinds)
+	if err != nil {
+		return nil, err
+	}
 	ctx = sqlctemplate.WithReplacements(ctx, map[string]sqlctemplate.Replacement{
 		"attempted_by_clause": {
 			Stable: true, // input never changes
@@ -470,6 +474,7 @@ func (e *Executor) JobGetAvailable(ctx context.Context, params *riverdriver.JobG
 	})
 
 	jobs, err := dbsqlc.New().JobGetAvailable(schemaTemplateParam(ctx, params.Schema), e.dbtx, &dbsqlc.JobGetAvailableParams{
+		Kind:      string(kinds),
 		MaxToLock: int64(params.MaxToLock),
 		Now:       timeStringNullable(params.Now),
 		Queue:     params.Queue,

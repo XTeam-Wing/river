@@ -303,6 +303,7 @@ func (e *Executor) JobGetAvailable(ctx context.Context, params *riverdriver.JobG
 		MaxToLock:      int32(min(params.MaxToLock, math.MaxInt32)),      //nolint:gosec
 		Now:            params.Now,
 		Queue:          params.Queue,
+		Kind:           params.Kinds,
 	})
 	if err != nil {
 		return nil, interpretError(err)

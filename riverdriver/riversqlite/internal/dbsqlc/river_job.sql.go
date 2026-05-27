@@ -344,6 +344,7 @@ WHERE id IN (
     WHERE
         priority >= 0
         AND river_job.queue = ?2
+        AND (json_array_length(?4) = 0 OR kind IN (SELECT value FROM json_each(?4)))
         AND scheduled_at <= coalesce(cast(?1 AS text), datetime('now', 'subsec'))
         AND state = 'available'
     ORDER BY
@@ -358,6 +359,7 @@ RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, fin
 type JobGetAvailableParams struct {
 	Now       *string
 	Queue     string
+	Kind      string
 	MaxToLock int64
 }
 
@@ -365,7 +367,7 @@ type JobGetAvailableParams struct {
 // LOCKED`. It doesn't exist in SQLite, but more aptly, there's only one writer
 // on SQLite at a time, so nothing else has the rows locked.
 func (q *Queries) JobGetAvailable(ctx context.Context, db DBTX, arg *JobGetAvailableParams) ([]*RiverJob, error) {
-	rows, err := db.QueryContext(ctx, jobGetAvailable, arg.Now, arg.Queue, arg.MaxToLock)
+	rows, err := db.QueryContext(ctx, jobGetAvailable, arg.Now, arg.Queue, arg.MaxToLock, arg.Kind)
 	if err != nil {
 		return nil, err
 	}

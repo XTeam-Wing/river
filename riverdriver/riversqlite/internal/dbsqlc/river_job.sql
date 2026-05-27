@@ -153,6 +153,7 @@ WHERE id IN (
     WHERE
         priority >= 0
         AND river_job.queue = @queue
+        AND (json_array_length(@kind) = 0 OR kind IN (SELECT value FROM json_each(@kind)))
         AND scheduled_at <= coalesce(cast(sqlc.narg('now') AS text), datetime('now', 'subsec'))
         AND state = 'available'
     ORDER BY

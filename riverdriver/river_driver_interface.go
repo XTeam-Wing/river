@@ -398,6 +398,7 @@ type JobDeleteManyParams struct {
 
 type JobGetAvailableParams struct {
 	ClientID       string
+	Kinds          []string
 	MaxAttemptedBy int
 	MaxToLock      int
 	Now            *time.Time

@@ -387,6 +387,7 @@ WITH locked_jobs AS (
     WHERE
         state = 'available'
         AND queue = $4::text
+        AND (cardinality($6::text[]) = 0 OR kind = any($6::text[]))
         AND scheduled_at <= coalesce($1::timestamptz, now())
     ORDER BY
         priority ASC,
@@ -424,6 +425,7 @@ type JobGetAvailableParams struct {
 	AttemptedBy    string
 	Queue          string
 	MaxToLock      int32
+	Kind           []string
 }
 
 func (q *Queries) JobGetAvailable(ctx context.Context, db DBTX, arg *JobGetAvailableParams) ([]*RiverJob, error) {
@@ -433,6 +435,7 @@ func (q *Queries) JobGetAvailable(ctx context.Context, db DBTX, arg *JobGetAvail
 		arg.AttemptedBy,
 		arg.Queue,
 		arg.MaxToLock,
+		pq.Array(arg.Kind),
 	)
 	if err != nil {
 		return nil, err

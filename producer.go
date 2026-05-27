@@ -757,6 +757,7 @@ func (p *producer) dispatchWork(workCtx context.Context, count int, fetchResultC
 
 	jobs, err := p.pilot.JobGetAvailable(ctx, p.exec, p.state, &riverdriver.JobGetAvailableParams{
 		ClientID:       p.config.ClientID,
+		Kinds:          p.workers.kinds(),
 		MaxAttemptedBy: maxAttemptedBy,
 		MaxToLock:      count,
 		Now:            p.Time.NowOrNil(),

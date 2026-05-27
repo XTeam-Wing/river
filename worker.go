@@ -187,6 +187,14 @@ func (w Workers) add(jobArgs JobArgs, workUnitFactory workunit.WorkUnitFactory) 
 	return nil
 }
 
+func (w Workers) kinds() []string {
+	kinds := make([]string, 0, len(w.workersMap))
+	for kind := range w.workersMap {
+		kinds = append(kinds, kind)
+	}
+	return kinds
+}
+
 // workFunc implements JobArgs and is used to wrap a function given to WorkFunc.
 type workFunc[T JobArgs] struct {
 	WorkerDefaults[T]
