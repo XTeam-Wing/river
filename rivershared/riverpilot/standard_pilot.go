@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/riverqueue/river/internal/rivercommon"
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
 	"github.com/riverqueue/river/rivertype"
@@ -19,6 +20,10 @@ func (p *StandardPilot) JobGetAvailable(ctx context.Context, exec riverdriver.Ex
 	if params.MaxToLock <= 0 {
 		return nil, nil
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, rivercommon.HotOperationTimeout)
+	defer cancel()
+
 	return exec.JobGetAvailable(ctx, params)
 }
 

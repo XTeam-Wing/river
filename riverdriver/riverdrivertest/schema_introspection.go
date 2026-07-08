@@ -90,14 +90,14 @@ func exerciseSchemaIntrospection[TTx any](ctx context.Context, t *testing.T,
 			// the index name, but on Postgres it should go before the table.
 			// The schema is empty for SQLite anyway since we're operating in
 			// isolation in a particular database file.
-			if driver.DatabaseName() == databaseNameSQLite {
+			if driver.DatabaseName() == riverdriver.DatabaseNameSQLite {
 				require.NoError(t, driver.GetExecutor().Exec(ctx, "CREATE INDEX river_job_index_drop_if_exists ON river_job (id)"))
 			} else {
 				require.NoError(t, driver.GetExecutor().Exec(ctx, fmt.Sprintf("CREATE INDEX river_job_index_drop_if_exists ON %s.river_job (id)", schema)))
 			}
 
 			err := driver.GetExecutor().IndexDropIfExists(ctx, &riverdriver.IndexDropIfExistsParams{
-				Index:  "river_job_index_drop_if_exists ",
+				Index:  "river_job_index_drop_if_exists",
 				Schema: schema,
 			})
 			require.NoError(t, err)
@@ -142,7 +142,7 @@ func exerciseSchemaIntrospection[TTx any](ctx context.Context, t *testing.T,
 				Index:  "river_job_prioritized_fetching_index",
 				Schema: "custom_schema",
 			})
-			if bundle.driver.DatabaseName() == databaseNameSQLite {
+			if bundle.driver.DatabaseName() == riverdriver.DatabaseNameSQLite {
 				requireMissingRelation(t, err, "custom_schema", "sqlite_master")
 			} else {
 				require.NoError(t, err)
@@ -177,6 +177,61 @@ func exerciseSchemaIntrospection[TTx any](ctx context.Context, t *testing.T,
 		require.NoError(t, err)
 	})
 
+	t.Run("IndexReindexArtifacts", func(t *testing.T) {
+		t.Parallel()
+
+		driver, schema := driverWithSchema(ctx, t, nil)
+		exec := driver.GetExecutor()
+
+		baseIndexName := "river_job_reindex_artifacts_index"
+		artifactNames := []string{
+			baseIndexName + "_ccnew",
+			baseIndexName + "_ccnew1",
+			baseIndexName + "_ccnew31",
+			baseIndexName + "_ccold",
+			baseIndexName + "_ccold2",
+		}
+		nonArtifactNames := []string{
+			baseIndexName + "_ccnewa",
+			baseIndexName + "_ccnew_1",
+			baseIndexName + "_ccoldx",
+			baseIndexName + "_ccold_2",
+			baseIndexName + "x_ccnew1",
+		}
+
+		indexNames := make([]string, 0, len(artifactNames)+len(nonArtifactNames))
+		indexNames = append(indexNames, artifactNames...)
+		indexNames = append(indexNames, nonArtifactNames...)
+		for _, indexName := range indexNames {
+			require.NoError(t, exec.IndexDropIfExists(ctx, &riverdriver.IndexDropIfExistsParams{Index: indexName, Schema: schema}))
+		}
+		t.Cleanup(func() {
+			for _, indexName := range indexNames {
+				require.NoError(t, exec.IndexDropIfExists(ctx, &riverdriver.IndexDropIfExistsParams{Index: indexName, Schema: schema}))
+			}
+		})
+
+		for _, indexName := range indexNames {
+			if driver.DatabaseName() == riverdriver.DatabaseNameSQLite {
+				require.NoError(t, exec.Exec(ctx, fmt.Sprintf("CREATE INDEX %s ON river_job (id)", indexName)))
+			} else {
+				require.NoError(t, exec.Exec(ctx, fmt.Sprintf("CREATE INDEX %s ON %s.river_job (id)", indexName, schema)))
+			}
+		}
+
+		reindexArtifactNames, err := exec.IndexReindexArtifacts(ctx, &riverdriver.IndexReindexArtifactsParams{
+			Index:  baseIndexName,
+			Schema: schema,
+		})
+		require.NoError(t, err)
+
+		if driver.DatabaseName() == riverdriver.DatabaseNameSQLite {
+			require.Empty(t, reindexArtifactNames)
+		} else {
+			require.Equal(t, artifactNames, reindexArtifactNames)
+		}
+	})
+
 	t.Run("IndexesExist", func(t *testing.T) {
 		t.Parallel()
 
@@ -205,7 +260,7 @@ func exerciseSchemaIntrospection[TTx any](ctx context.Context, t *testing.T,
 				IndexNames: []string{"river_job_kind", "river_job_prioritized_fetching_index"},
 				Schema:     "custom_schema_that_does_not_exist",
 			})
-			if bundle.driver.DatabaseName() == databaseNameSQLite {
+			if bundle.driver.DatabaseName() == riverdriver.DatabaseNameSQLite {
 				requireMissingRelation(t, err, "custom_schema_that_does_not_exist", "sqlite_master")
 			} else {
 				require.NoError(t, err)
@@ -245,7 +300,7 @@ func exerciseSchemaIntrospection[TTx any](ctx context.Context, t *testing.T,
 			// empty because they're actually separate databases and can't be
 			// referenced with their fully qualified name. So instead, extract
 			// the name of the current database via pragma and use it as schema.
-			if driver1.DatabaseName() == databaseNameSQLite {
+			if driver1.DatabaseName() == riverdriver.DatabaseNameSQLite {
 				getCurrentSchema := func(exec riverdriver.Executor) string {
 					var databaseFile string
 					require.NoError(t, exec.QueryRow(ctx, "SELECT file FROM pragma_database_list WHERE name = ?1", "main").Scan(&databaseFile))

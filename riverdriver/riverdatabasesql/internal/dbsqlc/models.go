@@ -58,25 +58,6 @@ func (ns NullRiverJobState) Value() (driver.Value, error) {
 	return string(ns.RiverJobState), nil
 }
 
-type RiverClient struct {
-	ID        string
-	CreatedAt time.Time
-	Metadata  string
-	PausedAt  *time.Time
-	UpdatedAt time.Time
-}
-
-type RiverClientQueue struct {
-	RiverClientID    string
-	Name             string
-	CreatedAt        time.Time
-	MaxWorkers       int64
-	Metadata         string
-	NumJobsCompleted int64
-	NumJobsRunning   int64
-	UpdatedAt        time.Time
-}
-
 type RiverJob struct {
 	ID           int64
 	Args         string
@@ -109,6 +90,13 @@ type RiverMigration struct {
 	Line      string
 	Version   int64
 	CreatedAt time.Time
+}
+
+type RiverNotification struct {
+	ID        int64
+	CreatedAt time.Time
+	Payload   string
+	Topic     string
 }
 
 type RiverQueue struct {
